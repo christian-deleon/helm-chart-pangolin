@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pangolin
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: pangolin
+  template:
+    metadata:
+      labels:
+        app: pangolin
+    spec:
+      containers:
+        - name: pangolin
+          image: fosrl/pangolin:postgresql-1.12.2
+          ports:
+            - name: internal-api
+              containerPort: 3000
+            - name: api
+              containerPort: 3001
+            - name: http
+              containerPort: 3002
+          # readinessProbe:
+          #   httpGet:
+          #     path: /api/v1
+          #     port: http
+          # livenessProbe:
+          #   httpGet:
+          #     path: /api/v1
+          #     port: http
+          resources: {}
+          volumeMounts:
+            - name: config
+              mountPath: /app/config
+      volumes:
+        - name: config
+          configMap:
+            name: pangolin-config
