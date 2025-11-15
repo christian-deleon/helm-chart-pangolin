@@ -1,10 +1,170 @@
 pangolin:
-  dashboard_url: "pangolin.local"
-  base_domain: "pangolin.local"
-  secret: "pangolin"
-  server_admin:
-    email: "admin@pangolin.local"
-    password: "pangolin"
+  image:
+    repository: docker.io/fosrl/pangolin
+    tag: "1.12.2"
+    pullPolicy: IfNotPresent
+  
+  replicas: 1
+  
+  domain: "pangolin.local"
+  email: "admin@pangolin.local"
+  
+  config:
+    gerbil:
+      start_port: 51820
+      base_endpoint: ""
+    app:
+      log_level: "info"
+      telemetry:
+        anonymous_usage: true
+    server:
+      secret: "changeme-generate-random-secret"
+      cors:
+        methods: ["GET", "POST", "PUT", "DELETE", "PATCH"]
+        allowed_headers: ["X-CSRF-Token", "Content-Type"]
+        credentials: false
+    flags:
+      require_email_verification: false
+      disable_signup_without_invite: true
+      disable_user_create_org: false
+      allow_raw_resources: true
+  
+  resources: {}
+  
+  service:
+    type: ClusterIP
+    ports:
+      api:
+        port: 3000
+        targetPort: 3000
+      internalApi:
+        port: 3001
+        targetPort: 3001
+      frontend:
+        port: 3002
+        targetPort: 3002
+
+gerbil:
+  image:
+    repository: docker.io/fosrl/gerbil
+    tag: "1.2.2"
+    pullPolicy: IfNotPresent
+  
+  replicas: 1
+  
+  resources: {}
+  
+  service:
+    type: LoadBalancer
+    annotations: {}
+    ports:
+      http:
+        port: 80
+        targetPort: 80
+        protocol: TCP
+      https:
+        port: 443
+        targetPort: 443
+        protocol: TCP
+      wireguard1:
+        port: 51820
+        targetPort: 51820
+        protocol: UDP
+      wireguard2:
+        port: 21820
+        targetPort: 21820
+        protocol: UDP
+  
+  securityContext:
+    privileged: true
+    capabilities:
+      add:
+        - NET_ADMIN
+        - SYS_MODULE
+
+storage:
+  config:
+    storageClass: ""
+    size: 1Gi
+    accessMode: ReadWriteOnce
+  letsencrypt:
+    storageClass: ""
+    size: 100Mi
+    accessMode: ReadWriteOnce
 
 traefik:
-  enabled: false
+  enabled: true
+  
+  image:
+    registry: docker.io
+    repository: traefik
+    tag: "v3.4.0"
+  
+  deployment:
+    replicas: 1
+    podAnnotations:
+      checksum/config: ""
+  
+  ports:
+    web:
+      port: 8000
+      expose:
+        default: false
+      exposedPort: 80
+    websecure:
+      port: 8443
+      expose:
+        default: false
+      exposedPort: 443
+      http3:
+        enabled: false
+      tls:
+        enabled: true
+    traefik:
+      expose:
+        default: false
+  
+  service:
+    enabled: false
+  
+  providers:
+    kubernetesCRD:
+      enabled: true
+      allowCrossNamespace: false
+      allowExternalNameServices: false
+    kubernetesIngress:
+      enabled: false
+    file:
+      enabled: true
+      watch: true
+      content: ""
+  
+  experimental:
+    plugins:
+      badger:
+        moduleName: "github.com/fosrl/badger"
+        version: "v1.2.1"
+  
+  logs:
+    general:
+      level: INFO
+  
+  additionalArguments:
+    - "--providers.http.endpoint=http://pangolin:3001/api/v1/traefik-config"
+    - "--providers.http.pollInterval=5s"
+    - "--certificatesresolvers.letsencrypt.acme.email=changeme@example.com"
+    - "--certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json"
+    - "--certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web"
+    - "--serversTransport.insecureSkipVerify=true"
+    - "--ping.entryPoint=web"
+  
+  volumes:
+    - name: traefik-config
+      mountPath: "/etc/traefik"
+      type: configMap
+    - name: letsencrypt
+      mountPath: "/letsencrypt"
+      type: persistentVolumeClaim
+  
+  persistence:
+    enabled: false

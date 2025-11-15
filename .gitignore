@@ -90,4 +90,10 @@ tags
 
 # Environment Files
 **/*.env
-**/*-dev.yaml
+
+# Secrets
+secrets.yaml
+values.prod.yaml
+
+# Helm charts directory (when using dependencies)
+charts/

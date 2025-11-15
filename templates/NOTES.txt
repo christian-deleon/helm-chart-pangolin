@@ -1,0 +1,54 @@
+Thank you for installing {{ .Chart.Name }}!
+
+Your Pangolin deployment is being created.
+
+1. Check the status of your deployment:
+
+   kubectl get pods -l "app.kubernetes.io/instance={{ .Release.Name }}"
+
+2. Get the external IP of your Gerbil service:
+
+{{- if eq .Values.gerbil.service.type "LoadBalancer" }}
+   kubectl get svc {{ include "pangolin.fullname" . }}-gerbil
+
+   NOTE: It may take a few minutes for the LoadBalancer IP to be available.
+{{- else if eq .Values.gerbil.service.type "NodePort" }}
+   export NODE_PORT=$(kubectl get --namespace {{ .Release.Namespace }} -o jsonpath="{.spec.ports[0].nodePort}" services {{ include "pangolin.fullname" . }}-gerbil)
+   export NODE_IP=$(kubectl get nodes --namespace {{ .Release.Namespace }} -o jsonpath="{.items[0].status.addresses[0].address}")
+   echo "Access Pangolin at: http://$NODE_IP:$NODE_PORT"
+{{- else }}
+   kubectl port-forward svc/{{ include "pangolin.fullname" . }}-gerbil 8080:80
+   Access Pangolin at: http://localhost:8080
+{{- end }}
+
+3. Update your DNS:
+
+   Point your domain {{ .Values.pangolin.domain }} to the LoadBalancer IP address.
+
+4. Access your Pangolin dashboard:
+
+   Once DNS propagates, visit: https://pangolin.{{ .Values.pangolin.domain }}/auth/initial-setup
+
+5. Check deployment logs:
+
+   Pangolin:
+   kubectl logs -l app.kubernetes.io/component=pangolin
+
+   Gerbil:
+   kubectl logs -l app.kubernetes.io/component=gerbil -c gerbil
+
+{{- if .Values.traefik.enabled }}
+   Traefik:
+   kubectl logs -l app.kubernetes.io/component=gerbil -c traefik
+{{- end }}
+
+For more information, visit:
+- Documentation: https://docs.pangolin.net/
+- GitHub: https://github.com/fosrl/pangolin
+
+Configuration Summary:
+- Domain: {{ .Values.pangolin.domain }}
+- Admin Email: {{ .Values.pangolin.email }}
+- Traefik: {{ if .Values.traefik.enabled }}Enabled{{ else }}Disabled{{ end }}
+- Storage Class (Config): {{ .Values.storage.config.storageClass | default "default" }}
+- Storage Class (Certs): {{ .Values.storage.letsencrypt.storageClass | default "default" }}

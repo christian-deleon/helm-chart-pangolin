@@ -1,0 +1,56 @@
+{{- if .Values.traefik.enabled }}
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: {{ include "pangolin.fullname" . }}-web
+  labels:
+    {{- include "pangolin.labels" . | nindent 4 }}
+    app.kubernetes.io/component: ingress
+spec:
+  entryPoints:
+    - web
+  routes:
+    - match: Host(`pangolin.{{ .Values.pangolin.domain }}`)
+      kind: Rule
+      services:
+        - name: {{ include "pangolin.fullname" . }}-pangolin
+          port: 3002
+      middlewares:
+        - name: {{ include "pangolin.fullname" . }}-redirect-https
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: {{ include "pangolin.fullname" . }}-websecure
+  labels:
+    {{- include "pangolin.labels" . | nindent 4 }}
+    app.kubernetes.io/component: ingress
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`pangolin.{{ .Values.pangolin.domain }}`) && !PathPrefix(`/api/v1`)
+      kind: Rule
+      services:
+        - name: {{ include "pangolin.fullname" . }}-pangolin
+          port: 3002
+    - match: Host(`pangolin.{{ .Values.pangolin.domain }}`) && PathPrefix(`/api/v1`)
+      kind: Rule
+      services:
+        - name: {{ include "pangolin.fullname" . }}-pangolin
+          port: 3000
+  tls:
+    certResolver: letsencrypt
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: {{ include "pangolin.fullname" . }}-redirect-https
+  labels:
+    {{- include "pangolin.labels" . | nindent 4 }}
+    app.kubernetes.io/component: middleware
+spec:
+  redirectScheme:
+    scheme: https
+    permanent: true
+{{- end }}

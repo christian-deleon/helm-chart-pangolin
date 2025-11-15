@@ -1,0 +1,69 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "pangolin.fullname" . }}-pangolin
+  labels:
+    {{- include "pangolin.labels" . | nindent 4 }}
+    app.kubernetes.io/component: pangolin
+spec:
+  replicas: {{ .Values.pangolin.replicas }}
+  selector:
+    matchLabels:
+      {{- include "pangolin.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: pangolin
+  template:
+    metadata:
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmaps/pangolin.yaml") . | sha256sum }}
+      labels:
+        {{- include "pangolin.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: pangolin
+    spec:
+      containers:
+        - name: pangolin
+          image: "{{ .Values.pangolin.image.repository }}:{{ .Values.pangolin.image.tag }}"
+          imagePullPolicy: {{ .Values.pangolin.image.pullPolicy }}
+          ports:
+            - name: api
+              containerPort: 3000
+              protocol: TCP
+            - name: internal-api
+              containerPort: 3001
+              protocol: TCP
+            - name: frontend
+              containerPort: 3002
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /api/v1/
+              port: internal-api
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /api/v1/
+              port: internal-api
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+          resources:
+            {{- toYaml .Values.pangolin.resources | nindent 12 }}
+          volumeMounts:
+            - name: config
+              mountPath: /app/config/config.yml
+              subPath: config.yml
+            - name: config-storage
+              mountPath: /app/config/db
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "pangolin.fullname" . }}-config
+            items:
+              - key: config.yml
+                path: config.yml
+        - name: config-storage
+          persistentVolumeClaim:
+            claimName: {{ include "pangolin.fullname" . }}-config

@@ -1,0 +1,49 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "pangolin.fullname" . }}-config
+  labels:
+    {{- include "pangolin.labels" . | nindent 4 }}
+    app.kubernetes.io/component: config
+data:
+  config.yml: |
+    # Pangolin Configuration
+    # See: https://docs.pangolin.net/
+    
+    gerbil:
+      start_port: {{ .Values.pangolin.config.gerbil.start_port }}
+      {{- if .Values.pangolin.config.gerbil.base_endpoint }}
+      base_endpoint: {{ .Values.pangolin.config.gerbil.base_endpoint | quote }}
+      {{- else }}
+      base_endpoint: "pangolin.{{ .Values.pangolin.domain }}"
+      {{- end }}
+    
+    app:
+      dashboard_url: "https://pangolin.{{ .Values.pangolin.domain }}"
+      log_level: {{ .Values.pangolin.config.app.log_level | quote }}
+      telemetry:
+        anonymous_usage: {{ .Values.pangolin.config.app.telemetry.anonymous_usage }}
+    
+    domains:
+      domain1:
+        base_domain: {{ .Values.pangolin.domain | quote }}
+    
+    server:
+      secret: {{ .Values.pangolin.config.server.secret | quote }}
+      cors:
+        origins: ["https://pangolin.{{ .Values.pangolin.domain }}"]
+        methods:
+          {{- range .Values.pangolin.config.server.cors.methods }}
+          - {{ . | quote }}
+          {{- end }}
+        allowed_headers:
+          {{- range .Values.pangolin.config.server.cors.allowed_headers }}
+          - {{ . | quote }}
+          {{- end }}
+        credentials: {{ .Values.pangolin.config.server.cors.credentials }}
+    
+    flags:
+      require_email_verification: {{ .Values.pangolin.config.flags.require_email_verification }}
+      disable_signup_without_invite: {{ .Values.pangolin.config.flags.disable_signup_without_invite }}
+      disable_user_create_org: {{ .Values.pangolin.config.flags.disable_user_create_org }}
+      allow_raw_resources: {{ .Values.pangolin.config.flags.allow_raw_resources }}

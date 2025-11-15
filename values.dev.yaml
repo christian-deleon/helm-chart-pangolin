@@ -1,0 +1,32 @@
+pangolin:
+  domain: "localhost"
+  email: "admin@pangolin.localhost"
+  
+  image:
+    tag: "1.12.2"
+  
+  config:
+    server:
+      secret: "development-secret-change-in-production"
+
+gerbil:
+  service:
+    type: NodePort
+
+storage:
+  config:
+    storageClass: "local-path"
+  letsencrypt:
+    storageClass: "local-path"
+
+traefik:
+  enabled: true
+  
+  additionalArguments:
+    - "--providers.http.endpoint=http://pangolin-pangolin:3001/api/v1/traefik-config"
+    - "--providers.http.pollInterval=5s"
+    - "--certificatesresolvers.letsencrypt.acme.email=admin@pangolin.localhost"
+    - "--certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json"
+    - "--certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web"
+    - "--serversTransport.insecureSkipVerify=true"
+    - "--ping.entryPoint=web"

@@ -1,0 +1,81 @@
+{{- if .Values.traefik.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "pangolin.fullname" . }}-traefik-config
+  labels:
+    {{- include "pangolin.labels" . | nindent 4 }}
+    app.kubernetes.io/component: traefik
+data:
+  dynamic_config.yml: |
+    http:
+      middlewares:
+        redirect-to-https:
+          redirectScheme:
+            scheme: https
+      
+      routers:
+        # Catch-all frontend router for HTTP (development)
+        catchall-frontend:
+          rule: "PathPrefix(`/`)"
+          service: next-service
+          entryPoints:
+            - web
+          priority: 1
+        
+        # Catch-all API router for HTTP (development)
+        catchall-api:
+          rule: "PathPrefix(`/api/v1`)"
+          service: api-service
+          entryPoints:
+            - web
+          priority: 10
+        
+        # HTTP to HTTPS redirect router (production with domain)
+        main-app-router-redirect:
+          rule: "Host(`pangolin.{{ .Values.pangolin.domain }}`)"
+          service: next-service
+          entryPoints:
+            - web
+          middlewares:
+            - redirect-to-https
+          priority: 100
+        
+        # Next.js router (handles everything except API and WebSocket paths)
+        next-router:
+          rule: "Host(`pangolin.{{ .Values.pangolin.domain }}`) && !PathPrefix(`/api/v1`)"
+          service: next-service
+          entryPoints:
+            - websecure
+          tls:
+            certResolver: letsencrypt
+        
+        # API router (handles /api/v1 paths)
+        api-router:
+          rule: "Host(`pangolin.{{ .Values.pangolin.domain }}`) && PathPrefix(`/api/v1`)"
+          service: api-service
+          entryPoints:
+            - websecure
+          tls:
+            certResolver: letsencrypt
+        
+        # WebSocket router
+        ws-router:
+          rule: "Host(`pangolin.{{ .Values.pangolin.domain }}`)"
+          service: api-service
+          entryPoints:
+            - websecure
+          tls:
+            certResolver: letsencrypt
+      
+      services:
+        next-service:
+          loadBalancer:
+            servers:
+              - url: "http://{{ include "pangolin.fullname" . }}-pangolin:3002"
+        
+        api-service:
+          loadBalancer:
+            servers:
+              - url: "http://{{ include "pangolin.fullname" . }}-pangolin:3000"
+{{- end }}

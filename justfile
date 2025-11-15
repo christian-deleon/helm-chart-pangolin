@@ -1,6 +1,6 @@
 name := "pangolin"
-path := "../"
-k3d-config := "k3d.yaml"
+helm_path := "./"
+k3d_config := "k3d.yaml"
 kubeconfig := "~/.kube/config"
 
 # List all commands
@@ -12,7 +12,7 @@ list:
 
 # Create k3d cluster
 create-cluster:
-    k3d cluster create {{ name }} --config {{ k3d-config }}
+    k3d cluster create {{ name }} --config {{ k3d_config }}
 
 # Delete k3d cluster
 delete-cluster:
@@ -29,15 +29,11 @@ _helm *args:
 
 # Install chart
 install:
-    @echo "Updating dependencies..."
-    helm dependency update {{ path }}
-    @echo
-    @echo "Installing chart..."
     just _helm upgrade \
-        --install {{ name }} {{ path }} \
+        --install {{ name }} {{ helm_path }} \
         --create-namespace \
-        --values {{ path }}values.yaml \
-        --values {{ path }}values-dev.yaml
+        --values {{ helm_path }}values.yaml \
+        --values {{ helm_path }}values.dev.yaml
 
 # Uninstall chart
 uninstall:

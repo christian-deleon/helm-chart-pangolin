@@ -1,0 +1,33 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "pangolin.fullname" . }}-config
+  labels:
+    {{- include "pangolin.labels" . | nindent 4 }}
+    app.kubernetes.io/component: storage
+spec:
+  accessModes:
+    - {{ .Values.storage.config.accessMode }}
+  {{- if .Values.storage.config.storageClass }}
+  storageClassName: {{ .Values.storage.config.storageClass }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.storage.config.size }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "pangolin.fullname" . }}-letsencrypt
+  labels:
+    {{- include "pangolin.labels" . | nindent 4 }}
+    app.kubernetes.io/component: storage
+spec:
+  accessModes:
+    - {{ .Values.storage.letsencrypt.accessMode }}
+  {{- if .Values.storage.letsencrypt.storageClass }}
+  storageClassName: {{ .Values.storage.letsencrypt.storageClass }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.storage.letsencrypt.size }}

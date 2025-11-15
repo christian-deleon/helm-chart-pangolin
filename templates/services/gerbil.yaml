@@ -1,0 +1,33 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "pangolin.fullname" . }}-gerbil
+  labels:
+    {{- include "pangolin.labels" . | nindent 4 }}
+    app.kubernetes.io/component: gerbil
+  {{- with .Values.gerbil.service.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ .Values.gerbil.service.type }}
+  ports:
+    - port: {{ .Values.gerbil.service.ports.http.port }}
+      targetPort: http
+      protocol: {{ .Values.gerbil.service.ports.http.protocol }}
+      name: http
+    - port: {{ .Values.gerbil.service.ports.https.port }}
+      targetPort: https
+      protocol: {{ .Values.gerbil.service.ports.https.protocol }}
+      name: https
+    - port: {{ .Values.gerbil.service.ports.wireguard1.port }}
+      targetPort: wireguard1
+      protocol: {{ .Values.gerbil.service.ports.wireguard1.protocol }}
+      name: wireguard1
+    - port: {{ .Values.gerbil.service.ports.wireguard2.port }}
+      targetPort: wireguard2
+      protocol: {{ .Values.gerbil.service.ports.wireguard2.protocol }}
+      name: wireguard2
+  selector:
+    {{- include "pangolin.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: gerbil

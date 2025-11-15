@@ -1,0 +1,126 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "pangolin.fullname" . }}-gerbil
+  labels:
+    {{- include "pangolin.labels" . | nindent 4 }}
+    app.kubernetes.io/component: gerbil
+spec:
+  replicas: {{ .Values.gerbil.replicas }}
+  selector:
+    matchLabels:
+      {{- include "pangolin.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: gerbil
+  template:
+    metadata:
+      labels:
+        {{- include "pangolin.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: gerbil
+    spec:
+      {{- if .Values.traefik.enabled }}
+      initContainers:
+        - name: wait-for-pangolin
+          image: busybox:1.36
+          command:
+            - sh
+            - -c
+            - |
+              until wget -q --spider http://{{ include "pangolin.fullname" . }}-pangolin:3001/api/v1/; do
+                echo "Waiting for Pangolin to be ready..."
+                sleep 5
+              done
+              echo "Pangolin is ready!"
+        - name: init-letsencrypt
+          image: busybox:1.36
+          command:
+            - sh
+            - -c
+            - |
+              touch /letsencrypt/acme.json
+              chmod 600 /letsencrypt/acme.json
+          volumeMounts:
+            - name: letsencrypt
+              mountPath: /letsencrypt
+      {{- end }}
+      containers:
+        - name: gerbil
+          image: "{{ .Values.gerbil.image.repository }}:{{ .Values.gerbil.image.tag }}"
+          imagePullPolicy: {{ .Values.gerbil.image.pullPolicy }}
+          args:
+            - --reachableAt=http://{{ include "pangolin.fullname" . }}-gerbil:3004
+            - --generateAndSaveKeyTo=/var/config/key
+            - --remoteConfig=http://{{ include "pangolin.fullname" . }}-pangolin:3001/api/v1/
+          securityContext:
+            {{- toYaml .Values.gerbil.securityContext | nindent 12 }}
+          ports:
+            - name: http
+              containerPort: 80
+              protocol: TCP
+            - name: https
+              containerPort: 443
+              protocol: TCP
+            - name: wireguard1
+              containerPort: 51820
+              protocol: UDP
+            - name: wireguard2
+              containerPort: 21820
+              protocol: UDP
+          resources:
+            {{- toYaml .Values.gerbil.resources | nindent 12 }}
+          volumeMounts:
+            - name: config-storage
+              mountPath: /var/config
+        {{- if .Values.traefik.enabled }}
+        - name: traefik
+          image: "{{ .Values.traefik.image.registry }}/{{ .Values.traefik.image.repository }}:{{ .Values.traefik.image.tag }}"
+          imagePullPolicy: IfNotPresent
+          args:
+            - --api.dashboard=true
+            - --api.insecure=true
+            - --ping=true
+            - --ping.entrypoint=web
+            - --providers.file.directory=/etc/traefik
+            - --providers.file.watch=true
+            {{- range .Values.traefik.additionalArguments }}
+            - {{ . }}
+            {{- end }}
+            - --entrypoints.web.address=:80
+            - --entrypoints.websecure.address=:443
+            - --entrypoints.websecure.http.tls.certResolver=letsencrypt
+            - --entrypoints.websecure.transport.respondingTimeouts.readTimeout=30m
+            - --log.level={{ .Values.traefik.logs.general.level }}
+          ports:
+            - name: traefik
+              containerPort: 8080
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /ping
+              port: 80
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /ping
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          volumeMounts:
+            - name: traefik-config
+              mountPath: /etc/traefik
+              readOnly: true
+            - name: letsencrypt
+              mountPath: /letsencrypt
+        {{- end }}
+      volumes:
+        - name: config-storage
+          persistentVolumeClaim:
+            claimName: {{ include "pangolin.fullname" . }}-config
+        {{- if .Values.traefik.enabled }}
+        - name: traefik-config
+          configMap:
+            name: {{ include "pangolin.fullname" . }}-traefik-config
+        - name: letsencrypt
+          persistentVolumeClaim:
+            claimName: {{ include "pangolin.fullname" . }}-letsencrypt
+        {{- end }}

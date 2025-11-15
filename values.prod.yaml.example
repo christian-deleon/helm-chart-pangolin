@@ -1,0 +1,107 @@
+# Production values for Pangolin Helm Chart
+# Copy this file to values.prod.yaml and customize for your environment
+
+pangolin:
+  domain: "pangolin.example.com"  # CHANGE THIS
+  email: "admin@example.com"      # CHANGE THIS
+  
+  image:
+    repository: docker.io/fosrl/pangolin
+    tag: "1.12.2"
+    pullPolicy: IfNotPresent
+  
+  replicas: 1
+  
+  config:
+    gerbil:
+      start_port: 51820
+      base_endpoint: ""  # Leave empty to use domain
+    app:
+      log_level: "info"
+      telemetry:
+        anonymous_usage: false  # Set to false for privacy
+    server:
+      secret: "CHANGE-ME-GENERATE-A-SECURE-RANDOM-STRING"  # IMPORTANT: Change this!
+      cors:
+        methods: ["GET", "POST", "PUT", "DELETE", "PATCH"]
+        allowed_headers: ["X-CSRF-Token", "Content-Type"]
+        credentials: false
+    flags:
+      require_email_verification: true   # Enable for production
+      disable_signup_without_invite: true
+      disable_user_create_org: false
+      allow_raw_resources: true
+  
+  resources:
+    limits:
+      cpu: 2000m
+      memory: 2Gi
+    requests:
+      cpu: 500m
+      memory: 512Mi
+  
+  service:
+    type: ClusterIP
+
+gerbil:
+  image:
+    repository: docker.io/fosrl/gerbil
+    tag: "1.2.2"
+    pullPolicy: IfNotPresent
+  
+  replicas: 1
+  
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 512Mi
+    requests:
+      cpu: 200m
+      memory: 256Mi
+  
+  service:
+    type: LoadBalancer
+    annotations:
+      # Add cloud provider specific annotations
+      # AWS Example:
+      # service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
+      # service.beta.kubernetes.io/aws-load-balancer-cross-zone-load-balancing-enabled: "true"
+      # 
+      # GCP Example:
+      # cloud.google.com/load-balancer-type: "External"
+      #
+      # Azure Example:
+      # service.beta.kubernetes.io/azure-load-balancer-internal: "false"
+
+storage:
+  config:
+    storageClass: "gp3"  # Change to your storage class
+    size: 5Gi
+    accessMode: ReadWriteOnce
+  letsencrypt:
+    storageClass: "gp3"  # Change to your storage class
+    size: 100Mi
+    accessMode: ReadWriteOnce
+
+traefik:
+  enabled: true
+  
+  image:
+    registry: docker.io
+    repository: traefik
+    tag: "v3.4.0"
+  
+  logs:
+    general:
+      level: INFO  # Use WARN or ERROR in production
+  
+  additionalArguments:
+    - "--providers.http.endpoint=http://pangolin-pangolin:3001/api/v1/traefik-config"
+    - "--providers.http.pollInterval=5s"
+    - "--certificatesresolvers.letsencrypt.acme.email=admin@example.com"  # CHANGE THIS
+    - "--certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json"
+    - "--certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web"
+    - "--serversTransport.insecureSkipVerify=true"
+    - "--ping.entryPoint=web"
+    # Uncomment for Let's Encrypt staging (for testing):
+    # - "--certificatesresolvers.letsencrypt.acme.caServer=https://acme-staging-v02.api.letsencrypt.org/directory"
