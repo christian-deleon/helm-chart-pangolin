@@ -1,0 +1,24 @@
+apiVersion: v1
+entries:
+  pangolin:
+  - apiVersion: v2
+    appVersion: 1.12.2
+    created: "2025-11-15T07:16:37.48992902Z"
+    description: A Helm chart for Pangolin - Self-hosted tunnel and reverse proxy
+    digest: 79b3f56b255dd2fa46a2d351160d6192fd83adc5418cc1ba7cb34a87d2706cec
+    home: https://github.com/christian-deleon/helm-chart-pangolin
+    keywords:
+    - pangolin
+    - proxy
+    - reverse proxy
+    - tunnel
+    - traefik
+    - wireguard
+    maintainers:
+    - name: Christian De Leon
+    name: pangolin
+    type: application
+    urls:
+    - https://christian-deleon.github.io/helm-chart-pangolin/pangolin-0.1.0.tgz
+    version: 0.1.0
+generated: "2025-11-15T07:16:37.48810178Z"
