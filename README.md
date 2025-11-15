@@ -22,8 +22,6 @@ Pangolin consists of three main components:
 
 ## Installation
 
-> **Note**: This chart is published to GitHub Pages. Make sure GitHub Pages is enabled in your repository settings (Settings → Pages → Source: GitHub Actions).
-
 ### Add the Helm Repository
 
 ```bash
