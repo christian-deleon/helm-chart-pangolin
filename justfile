@@ -1,3 +1,5 @@
+set quiet := true
+
 name := "pangolin"
 helm_path := "./"
 k3d_config := "k3d.yaml"
@@ -41,7 +43,9 @@ install:
         --install {{ name }} {{ helm_path }} \
         --create-namespace \
         --values {{ helm_path }}values.yaml \
-        --values {{ helm_path }}values.dev.yaml
+        --values {{ helm_path }}values.dev.yaml \
+        --wait \
+        --timeout 5m
 
 # Uninstall chart
 uninstall:
@@ -51,7 +55,7 @@ uninstall:
 # Kubectl
 
 _kubectl *args:
-    @kubectl config get-contexts k3d-{{ name }} >/dev/null 2>&1 || (echo "Error: k3d cluster '{{ name }}' not found. Run 'just create-cluster' first." && exit 1)
+    kubectl config get-contexts k3d-{{ name }} >/dev/null 2>&1 || (echo "Error: k3d cluster '{{ name }}' not found. Run 'just create-cluster' first." && exit 1)
     kubectl {{ args }} \
         --namespace {{ name }} \
         --kubeconfig {{ kubeconfig }} \
@@ -71,6 +75,9 @@ pvc:
 
 # Get setup token from logs
 setup-token:
+    @echo "Waiting for Pangolin pod to be ready..."
+    just _kubectl wait --for=condition=ready pod -l app.kubernetes.io/component=pangolin --timeout=5m
+    @echo
     just _kubectl logs -l app.kubernetes.io/component=pangolin | grep -A 3 "SETUP TOKEN"
 
 # Get Pangolin logs
