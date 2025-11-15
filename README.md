@@ -120,6 +120,8 @@ For local development and testing, you can use [k3d](https://k3d.io/) to run a l
 
    The domain `localhost` is already configured in `values.dev.yaml` for this purpose.
 
+   See the [Accessing Pangolin](#accessing-pangolin) section below for instructions on getting the setup token and completing the initial configuration.
+
 ### Limitations
 
 ⚠️ **Important**: Running Pangolin with k3d has limitations:
@@ -190,7 +192,7 @@ pangolin:
 
 In the Docker Compose version, Traefik shares the network namespace with Gerbil using `network_mode: service:gerbil`. In Kubernetes, this is achieved by running Traefik as a sidecar container in the Gerbil pod, allowing them to share the same network namespace.
 
-```
+```text
 ┌─────────────────┐
 │   LoadBalancer  │
 │   (Gerbil Svc)  │
@@ -252,39 +254,90 @@ After installation:
 1. Wait for the LoadBalancer to get an external IP:
 
    ```bash
-   kubectl get svc pangolin-gerbil
+   kubectl get svc pangolin-gerbil -n pangolin
    ```
 
 2. Update your DNS to point your domain to the LoadBalancer IP
 
-3. Access the dashboard at:
+3. Get the setup token from the Pangolin pod logs:
+
+   ```bash
+   kubectl logs -l app.kubernetes.io/component=pangolin -n pangolin | grep -A 3 "SETUP TOKEN"
+   ```
+
+   The token will be displayed in the logs when Pangolin starts for the first time. Look for output like:
+
+   ```text
+   === SETUP TOKEN GENERATED ===
+   Token: <your-token-here>
+   Use this token on the initial setup page
+   ================================
+   ```
+
+4. Access the dashboard at:
 
    ```text
    https://pangolin.your-domain.com/auth/initial-setup
    ```
 
+   Enter the setup token from step 3 to complete the initial configuration.
+
 ## Troubleshooting
 
 ### Check Pod Status
 
+Using justfile commands:
+
 ```bash
-kubectl get pods
-kubectl describe pod pangolin-gerbil-xxx
-kubectl logs pangolin-gerbil-xxx -c gerbil
-kubectl logs pangolin-gerbil-xxx -c traefik
-kubectl logs pangolin-pangolin-xxx
+just pods
+just describe
+just logs
+```
+
+Or manually:
+
+```bash
+kubectl get pods -n pangolin
+kubectl describe pod pangolin-gerbil-xxx -n pangolin
+kubectl logs pangolin-gerbil-xxx -c gerbil -n pangolin
+kubectl logs pangolin-gerbil-xxx -c traefik -n pangolin
+kubectl logs pangolin-pangolin-xxx -n pangolin
 ```
 
 ### Check Services
 
 ```bash
-kubectl get svc
+just svc
+```
+
+Or manually:
+
+```bash
+kubectl get svc -n pangolin
 ```
 
 ### Check PVCs
 
 ```bash
-kubectl get pvc
+just pvc
+```
+
+Or manually:
+
+```bash
+kubectl get pvc -n pangolin
+```
+
+### View Logs
+
+Convenient justfile commands for viewing logs:
+
+```bash
+just setup-token    # Get the setup token
+just logs-pangolin  # View Pangolin logs
+just logs-gerbil    # View Gerbil logs
+just logs-traefik   # View Traefik logs
+just logs           # View all logs
 ```
 
 ### Common Issues
@@ -308,7 +361,7 @@ helm uninstall pangolin
 Note: PersistentVolumeClaims are not automatically deleted. To delete them:
 
 ```bash
-kubectl delete pvc pangolin-config pangolin-letsencrypt
+kubectl delete pvc pangolin-config pangolin-letsencrypt -n pangolin
 ```
 
 ## License

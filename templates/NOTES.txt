@@ -4,12 +4,12 @@ Your Pangolin deployment is being created.
 
 1. Check the status of your deployment:
 
-   kubectl get pods -l "app.kubernetes.io/instance={{ .Release.Name }}"
+   kubectl get pods -l "app.kubernetes.io/instance={{ .Release.Name }}" --namespace {{ .Release.Namespace }}
 
 2. Get the external IP of your Gerbil service:
 
 {{- if eq .Values.gerbil.service.type "LoadBalancer" }}
-   kubectl get svc {{ include "pangolin.fullname" . }}-gerbil
+   kubectl get svc {{ include "pangolin.fullname" . }}-gerbil --namespace {{ .Release.Namespace }}
 
    NOTE: It may take a few minutes for the LoadBalancer IP to be available.
 {{- else if eq .Values.gerbil.service.type "NodePort" }}
@@ -17,7 +17,7 @@ Your Pangolin deployment is being created.
    export NODE_IP=$(kubectl get nodes --namespace {{ .Release.Namespace }} -o jsonpath="{.items[0].status.addresses[0].address}")
    echo "Access Pangolin at: http://$NODE_IP:$NODE_PORT"
 {{- else }}
-   kubectl port-forward svc/{{ include "pangolin.fullname" . }}-gerbil 8080:80
+   kubectl port-forward svc/{{ include "pangolin.fullname" . }}-gerbil 8080:80 --namespace {{ .Release.Namespace }}
    Access Pangolin at: http://localhost:8080
 {{- end }}
 
@@ -25,21 +25,34 @@ Your Pangolin deployment is being created.
 
    Point your domain {{ .Values.pangolin.domain }} to the LoadBalancer IP address.
 
-4. Access your Pangolin dashboard:
+4. Get the setup token:
+
+   kubectl logs -l app.kubernetes.io/component=pangolin --namespace {{ .Release.Namespace }} | grep -A 3 "SETUP TOKEN"
+
+   The token will be displayed in the logs when Pangolin starts for the first time. Look for output like:
+
+   === SETUP TOKEN GENERATED ===
+   Token: <your-token-here>
+   Use this token on the initial setup page
+   ================================
+
+5. Access your Pangolin dashboard:
 
    Once DNS propagates, visit: https://pangolin.{{ .Values.pangolin.domain }}/auth/initial-setup
 
-5. Check deployment logs:
+   Enter the setup token from step 4 to complete the initial configuration.
+
+6. Check deployment logs:
 
    Pangolin:
-   kubectl logs -l app.kubernetes.io/component=pangolin
+   kubectl logs -l app.kubernetes.io/component=pangolin --namespace {{ .Release.Namespace }}
 
    Gerbil:
-   kubectl logs -l app.kubernetes.io/component=gerbil -c gerbil
+   kubectl logs -l app.kubernetes.io/component=gerbil -c gerbil --namespace {{ .Release.Namespace }}
 
 {{- if .Values.traefik.enabled }}
    Traefik:
-   kubectl logs -l app.kubernetes.io/component=gerbil -c traefik
+   kubectl logs -l app.kubernetes.io/component=gerbil -c traefik --namespace {{ .Release.Namespace }}
 {{- end }}
 
 For more information, visit:
